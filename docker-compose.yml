@@ -1,0 +1,26 @@
+# initialize the version for docker compose
+version: '3.7'
+
+volumes:
+  # create volume for the weights
+  weights:
+
+services:
+  trainer:
+    image: keyme-trainer:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - weights:/usr/src/app/weights
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: ["poetry", "run", "python", "train_model.py", "--model", "BittingHighRes", "--bucket", "keyme-data", "--prefix", "bitting_left"]
+

@@ -1,0 +1,11 @@
+md5: 155d9776111ade29bdbd62568b839108
+frozen: true
+deps:
+- md5: 725b87c6901f549a32d420b0fcc20399.dir
+  size: 13116181170
+  nfiles: 33518
+  hash: md5
+  path: s3://keyme-data/training-data
+outs:
+- hash: md5
+  path: training-data
