@@ -1,18 +1,19 @@
 import pathlib
 from models.base_model import BaseModelConfig
+from tensorflow import keras
 
-class Config(BaseModelConfig):
+
+class U2NetConfig(BaseModelConfig):
     # Training
     resume: bool = False
     batch_size: int = 8
-    epochs: int = 2000
+    epochs: int = 20
     learning_rate: float = 0.001
     eval_interval: int = 100
     save_interval: int = 50
 
     # Dataset
-    dataset_dir: pathlib.Path = pathlib.Path("training_data/bitting_left")
-    eval_dir: pathlib.Path = pathlib.Path("evaluation_images")
+    dataset_dir: pathlib.Path = pathlib.Path("training-data/bitting_left")
 
     # Model
     default_in_shape: tuple = (512, 512, 3)
@@ -22,6 +23,3 @@ class Config(BaseModelConfig):
     # evaluate
     apply_eval_mask: bool = True
     merge_eval: bool = True
-
-# Create the configuration
-config = Config()

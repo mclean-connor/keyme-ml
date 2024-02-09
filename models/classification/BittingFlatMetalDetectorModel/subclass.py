@@ -1,11 +1,12 @@
 import tensorflow as tf
 from tensorflow import keras  # type: ignore
-from models.classification.BittingFlatMetalDetectorModel import config
+from models.classification.BittingFlatMetalDetectorModel import FlatDetectorConfig
 
 
 class BittingFlatMetalDetectorSubclass(keras.Model):
     def __init__(self, num_classes, data_format="NHWC"):
         super(BittingFlatMetalDetectorSubclass, self).__init__()
+        self.config = FlatDetectorConfig()
         self.num_classes = num_classes
         self.data_format = data_format
 
@@ -31,7 +32,7 @@ class BittingFlatMetalDetectorSubclass(keras.Model):
         self.bn2 = keras.layers.BatchNormalization()
         self.dropout2 = keras.layers.Dropout(0.5)
 
-        if config.use_third_convolutional_block:
+        if self.config.use_third_convolutional_block:
             self.conv3 = keras.layers.Conv2D(
                 128,
                 (3, 3),
@@ -61,7 +62,7 @@ class BittingFlatMetalDetectorSubclass(keras.Model):
         x = self.bn2(x, training=training)
         x = self.dropout2(x, training=training)
 
-        if config.use_third_convolutional_block:
+        if self.config.use_third_convolutional_block:
             x = self.conv3(x)
             x = self.bn3(x, training=training)
             x = self.dropout3(x, training=training)

@@ -1,11 +1,16 @@
 import tensorflow as tf
-from tensorflow import keras # type: ignore
-from tensorflow.keras.layers import Conv2D, BatchNormalization, ReLU, MaxPool2D, UpSampling2D # type: ignore
+from tensorflow import keras  # type: ignore
+from tensorflow.keras.layers import Conv2D, BatchNormalization, ReLU, MaxPool2D, UpSampling2D  # type: ignore
 
 # Optimizer / Loss
-adam = keras.optimizers.Adam(learning_rate=.001, beta_1=.9, beta_2=.999, epsilon=1e-08)
-cp_callback = keras.callbacks.ModelCheckpoint(filepath='model.ckpt', save_weights_only=True, verbose=1)
+adam = keras.optimizers.Adam(
+    learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08
+)
+cp_callback = keras.callbacks.ModelCheckpoint(
+    filepath="model.ckpt", save_weights_only=True, verbose=1
+)
 bce = keras.losses.BinaryCrossentropy()
+
 
 def bce_loss(y_true, y_pred):
     y_pred = tf.expand_dims(y_pred, axis=-1)
@@ -18,10 +23,36 @@ def bce_loss(y_true, y_pred):
     loss6 = bce(y_true, y_pred[6])
     return loss0 + loss1 + loss2 + loss3 + loss4 + loss5 + loss6
 
+
+def iou(y_true, y_pred):
+    y_true = tf.cast(y_true, tf.float32)
+    y_pred = tf.cast(y_pred, tf.float32)
+    intersection = tf.reduce_sum(y_true * y_pred)
+    union = tf.reduce_sum(y_true) + tf.reduce_sum(y_pred) - intersection
+    return intersection / union
+
+
+def average_iou(y_true, y_pred):
+    # make an averate iou metric for all 7 outputs
+    y_pred = tf.expand_dims(y_pred, axis=-1)
+    y_pred = tf.math.round(y_pred)
+    y_true = tf.math.round(y_true)
+    iou0 = iou(y_true, y_pred[0])
+    iou1 = iou(y_true, y_pred[1])
+    iou2 = iou(y_true, y_pred[2])
+    iou3 = iou(y_true, y_pred[3])
+    iou4 = iou(y_true, y_pred[4])
+    iou5 = iou(y_true, y_pred[5])
+    iou6 = iou(y_true, y_pred[6])
+    return (iou0 + iou1 + iou2 + iou3 + iou4 + iou5 + iou6) / 7
+
+
 class ConvBlock(keras.layers.Layer):
-    def __init__(self, out_ch=3,dirate=1):
+    def __init__(self, out_ch=3, dirate=1):
         super(ConvBlock, self).__init__()
-        self.conv = Conv2D(out_ch, (3, 3), strides=1, padding='same', dilation_rate=dirate)
+        self.conv = Conv2D(
+            out_ch, (3, 3), strides=1, padding="same", dilation_rate=dirate
+        )
         self.bn = BatchNormalization()
         self.relu = ReLU()
 
@@ -34,41 +65,42 @@ class ConvBlock(keras.layers.Layer):
 
         return x
 
+
 class RSU7(keras.layers.Layer):
     def __init__(self, mid_ch=12, out_ch=3):
         super(RSU7, self).__init__()
         self.conv_b0 = ConvBlock(out_ch, dirate=1)
 
         self.conv_b1 = ConvBlock(mid_ch, dirate=1)
-        self.pool1   = MaxPool2D(2, strides=(2, 2))
+        self.pool1 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b2 = ConvBlock(mid_ch, dirate=1)
-        self.pool2   = MaxPool2D(2, strides=(2, 2))
+        self.pool2 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b3 = ConvBlock(mid_ch, dirate=1)
-        self.pool3   = MaxPool2D(2, strides=(2, 2))
+        self.pool3 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b4 = ConvBlock(mid_ch, dirate=1)
-        self.pool4   = MaxPool2D(2, strides=(2, 2))
+        self.pool4 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b5 = ConvBlock(mid_ch, dirate=1)
-        self.pool5   = MaxPool2D(2, strides=(2, 2))
+        self.pool5 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b6 = ConvBlock(mid_ch, dirate=1)
         self.conv_b7 = ConvBlock(mid_ch, dirate=2)
 
-        self.conv_b6_d  = ConvBlock(mid_ch, dirate=1)
-        self.upsample_1 = UpSampling2D(size=(2, 2), interpolation='bilinear')
-        self.conv_b5_d  = ConvBlock(mid_ch, dirate=1)
-        self.upsample_2 = UpSampling2D(size=(2, 2), interpolation='bilinear')
-        self.conv_b4_d  = ConvBlock(mid_ch, dirate=1)
-        self.upsample_3 = UpSampling2D(size=(2, 2), interpolation='bilinear')
-        self.conv_b3_d  = ConvBlock(mid_ch, dirate=1)
-        self.upsample_4 = UpSampling2D(size=(2, 2), interpolation='bilinear')
-        self.conv_b2_d  = ConvBlock(mid_ch, dirate=1)
-        self.upsample_5 = UpSampling2D(size=(2, 2), interpolation='bilinear')
-        self.conv_b1_d  = ConvBlock(out_ch, dirate=1)
-        self.upsample_6 = UpSampling2D(size=(2, 2), interpolation='bilinear')
+        self.conv_b6_d = ConvBlock(mid_ch, dirate=1)
+        self.upsample_1 = UpSampling2D(size=(2, 2), interpolation="bilinear")
+        self.conv_b5_d = ConvBlock(mid_ch, dirate=1)
+        self.upsample_2 = UpSampling2D(size=(2, 2), interpolation="bilinear")
+        self.conv_b4_d = ConvBlock(mid_ch, dirate=1)
+        self.upsample_3 = UpSampling2D(size=(2, 2), interpolation="bilinear")
+        self.conv_b3_d = ConvBlock(mid_ch, dirate=1)
+        self.upsample_4 = UpSampling2D(size=(2, 2), interpolation="bilinear")
+        self.conv_b2_d = ConvBlock(mid_ch, dirate=1)
+        self.upsample_5 = UpSampling2D(size=(2, 2), interpolation="bilinear")
+        self.conv_b1_d = ConvBlock(out_ch, dirate=1)
+        self.upsample_6 = UpSampling2D(size=(2, 2), interpolation="bilinear")
 
     def call(self, inputs):
         hx = inputs
@@ -105,12 +137,13 @@ class RSU7(keras.layers.Layer):
         hx3d = self.conv_b3_d(tf.concat([hx4dup, hx3], axis=3))
         hx3dup = self.upsample_2(hx3d)
 
-        hx2d =  self.conv_b2_d(tf.concat([hx3dup, hx2], axis=3))
+        hx2d = self.conv_b2_d(tf.concat([hx3dup, hx2], axis=3))
         hx2dup = self.upsample_1(hx2d)
 
         hx1d = self.conv_b1_d(tf.concat([hx2dup, hx1], axis=3))
 
         return hx1d + hxin
+
 
 class RSU6(keras.layers.Layer):
     def __init__(self, mid_ch=12, out_ch=3):
@@ -118,32 +151,32 @@ class RSU6(keras.layers.Layer):
         self.conv_b0 = ConvBlock(out_ch, dirate=1)
 
         self.conv_b1 = ConvBlock(mid_ch, dirate=1)
-        self.pool1   = MaxPool2D(2, strides=(2, 2))
+        self.pool1 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b2 = ConvBlock(mid_ch, dirate=1)
-        self.pool2   = MaxPool2D(2, strides=(2, 2))
+        self.pool2 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b3 = ConvBlock(mid_ch, dirate=1)
-        self.pool3   = MaxPool2D(2, strides=(2, 2))
+        self.pool3 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b4 = ConvBlock(mid_ch, dirate=1)
-        self.pool4   = MaxPool2D(2, strides=(2, 2))
+        self.pool4 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b5 = ConvBlock(mid_ch, dirate=1)
-        self.pool5   = MaxPool2D(2, strides=(2, 2))
+        self.pool5 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b6 = ConvBlock(mid_ch, dirate=2)
 
         self.conv_b5_d = ConvBlock(mid_ch, dirate=1)
-        self.upsample_1 = UpSampling2D(size=(2, 2), interpolation='bilinear')
+        self.upsample_1 = UpSampling2D(size=(2, 2), interpolation="bilinear")
         self.conv_b4_d = ConvBlock(mid_ch, dirate=1)
-        self.upsample_2 = UpSampling2D(size=(2, 2), interpolation='bilinear')
+        self.upsample_2 = UpSampling2D(size=(2, 2), interpolation="bilinear")
         self.conv_b3_d = ConvBlock(mid_ch, dirate=1)
-        self.upsample_3 = UpSampling2D(size=(2, 2), interpolation='bilinear')
+        self.upsample_3 = UpSampling2D(size=(2, 2), interpolation="bilinear")
         self.conv_b2_d = ConvBlock(mid_ch, dirate=1)
-        self.upsample_4 = UpSampling2D(size=(2, 2), interpolation='bilinear')
+        self.upsample_4 = UpSampling2D(size=(2, 2), interpolation="bilinear")
         self.conv_b1_d = ConvBlock(out_ch, dirate=1)
-        self.upsample_5 = UpSampling2D(size=(2, 2), interpolation='bilinear')
+        self.upsample_5 = UpSampling2D(size=(2, 2), interpolation="bilinear")
 
     def call(self, inputs):
         hx = inputs
@@ -174,12 +207,13 @@ class RSU6(keras.layers.Layer):
         hx3d = self.conv_b3_d(tf.concat([hx4dup, hx3], axis=3))
         hx3dup = self.upsample_2(hx3d)
 
-        hx2d =  self.conv_b2_d(tf.concat([hx3dup, hx2], axis=3))
+        hx2d = self.conv_b2_d(tf.concat([hx3dup, hx2], axis=3))
         hx2dup = self.upsample_1(hx2d)
 
         hx1d = self.conv_b1_d(tf.concat([hx2dup, hx1], axis=3))
 
         return hx1d + hxin
+
 
 class RSU5(keras.layers.Layer):
     def __init__(self, mid_ch=12, out_ch=3):
@@ -187,27 +221,27 @@ class RSU5(keras.layers.Layer):
         self.conv_b0 = ConvBlock(out_ch, dirate=1)
 
         self.conv_b1 = ConvBlock(mid_ch, dirate=1)
-        self.pool1   = MaxPool2D(2, strides=(2, 2))
+        self.pool1 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b2 = ConvBlock(mid_ch, dirate=1)
-        self.pool2   = MaxPool2D(2, strides=(2, 2))
+        self.pool2 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b3 = ConvBlock(mid_ch, dirate=1)
-        self.pool3   = MaxPool2D(2, strides=(2, 2))
+        self.pool3 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b4 = ConvBlock(mid_ch, dirate=1)
-        self.pool4   = MaxPool2D(2, strides=(2, 2))
+        self.pool4 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b5 = ConvBlock(mid_ch, dirate=2)
 
         self.conv_b4_d = ConvBlock(mid_ch, dirate=1)
-        self.upsample_1 = UpSampling2D(size=(2, 2), interpolation='bilinear')
+        self.upsample_1 = UpSampling2D(size=(2, 2), interpolation="bilinear")
         self.conv_b3_d = ConvBlock(mid_ch, dirate=1)
-        self.upsample_2 = UpSampling2D(size=(2, 2), interpolation='bilinear')
+        self.upsample_2 = UpSampling2D(size=(2, 2), interpolation="bilinear")
         self.conv_b2_d = ConvBlock(mid_ch, dirate=1)
-        self.upsample_3 = UpSampling2D(size=(2, 2), interpolation='bilinear')
+        self.upsample_3 = UpSampling2D(size=(2, 2), interpolation="bilinear")
         self.conv_b1_d = ConvBlock(out_ch, dirate=1)
-        self.upsample_4 = UpSampling2D(size=(2, 2), interpolation='bilinear')
+        self.upsample_4 = UpSampling2D(size=(2, 2), interpolation="bilinear")
 
     def call(self, inputs):
         hx = inputs
@@ -232,12 +266,13 @@ class RSU5(keras.layers.Layer):
         hx3d = self.conv_b3_d(tf.concat([hx4dup, hx3], axis=3))
         hx3dup = self.upsample_2(hx3d)
 
-        hx2d =  self.conv_b2_d(tf.concat([hx3dup, hx2], axis=3))
+        hx2d = self.conv_b2_d(tf.concat([hx3dup, hx2], axis=3))
         hx2dup = self.upsample_1(hx2d)
 
         hx1d = self.conv_b1_d(tf.concat([hx2dup, hx1], axis=3))
 
         return hx1d + hxin
+
 
 class RSU4(keras.layers.Layer):
     def __init__(self, mid_ch=12, out_ch=3):
@@ -245,22 +280,22 @@ class RSU4(keras.layers.Layer):
         self.conv_b0 = ConvBlock(out_ch, dirate=1)
 
         self.conv_b1 = ConvBlock(mid_ch, dirate=1)
-        self.pool1   = MaxPool2D(2, strides=(2, 2))
+        self.pool1 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b2 = ConvBlock(mid_ch, dirate=1)
-        self.pool2   = MaxPool2D(2, strides=(2, 2))
+        self.pool2 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b3 = ConvBlock(mid_ch, dirate=1)
-        self.pool3   = MaxPool2D(2, strides=(2, 2))
+        self.pool3 = MaxPool2D(2, strides=(2, 2))
 
         self.conv_b4 = ConvBlock(mid_ch, dirate=2)
 
         self.conv_b3_d = ConvBlock(mid_ch, dirate=1)
-        self.upsample_1 = UpSampling2D(size=(2, 2), interpolation='bilinear')
+        self.upsample_1 = UpSampling2D(size=(2, 2), interpolation="bilinear")
         self.conv_b2_d = ConvBlock(mid_ch, dirate=1)
-        self.upsample_2 = UpSampling2D(size=(2, 2), interpolation='bilinear')
+        self.upsample_2 = UpSampling2D(size=(2, 2), interpolation="bilinear")
         self.conv_b1_d = ConvBlock(out_ch, dirate=1)
-        self.upsample_3 = UpSampling2D(size=(2, 2), interpolation='bilinear')
+        self.upsample_3 = UpSampling2D(size=(2, 2), interpolation="bilinear")
 
     def call(self, inputs):
         hx = inputs
@@ -279,12 +314,13 @@ class RSU4(keras.layers.Layer):
         hx3d = self.conv_b3_d(tf.concat([hx4, hx3], axis=3))
         hx3dup = self.upsample_2(hx3d)
 
-        hx2d =  self.conv_b2_d(tf.concat([hx3dup, hx2], axis=3))
+        hx2d = self.conv_b2_d(tf.concat([hx3dup, hx2], axis=3))
         hx2dup = self.upsample_1(hx2d)
 
         hx1d = self.conv_b1_d(tf.concat([hx2dup, hx1], axis=3))
 
         return hx1d + hxin
+
 
 class RSU4F(keras.layers.Layer):
     def __init__(self, mid_ch=12, out_ch=3):
@@ -310,6 +346,7 @@ class RSU4F(keras.layers.Layer):
         hx2d = self.conv_b2_d(tf.concat([hx3d, hx2], axis=3))
         hx1d = self.conv_b1_d(tf.concat([hx2d, hx1], axis=3))
         return hx1d + hxin
+
 
 class U2NET(keras.models.Model):
     def __init__(self, out_ch=1):
@@ -338,26 +375,26 @@ class U2NET(keras.models.Model):
         self.stage2d = RSU6(32, 64)
         self.stage1d = RSU7(16, 64)
 
-        self.side1 = Conv2D(out_ch, (3, 3), padding='same')
-        self.side2 = Conv2D(out_ch, (3, 3), padding='same')
-        self.side3 = Conv2D(out_ch, (3, 3), padding='same')
-        self.side4 = Conv2D(out_ch, (3, 3), padding='same')
-        self.side5 = Conv2D(out_ch, (3, 3), padding='same')
-        self.side6 = Conv2D(out_ch, (3, 3), padding='same')
+        self.side1 = Conv2D(out_ch, (3, 3), padding="same")
+        self.side2 = Conv2D(out_ch, (3, 3), padding="same")
+        self.side3 = Conv2D(out_ch, (3, 3), padding="same")
+        self.side4 = Conv2D(out_ch, (3, 3), padding="same")
+        self.side5 = Conv2D(out_ch, (3, 3), padding="same")
+        self.side6 = Conv2D(out_ch, (3, 3), padding="same")
 
-        self.upsample_2 = UpSampling2D(size=(2, 2), interpolation='bilinear')
-        self.upsample_3 = UpSampling2D(size=(2, 2), interpolation='bilinear')
-        self.upsample_4 = UpSampling2D(size=(2, 2), interpolation='bilinear')
-        self.upsample_5 = UpSampling2D(size=(2, 2), interpolation='bilinear')
-        self.upsample_6 = UpSampling2D(size=(2, 2), interpolation='bilinear')
+        self.upsample_2 = UpSampling2D(size=(2, 2), interpolation="bilinear")
+        self.upsample_3 = UpSampling2D(size=(2, 2), interpolation="bilinear")
+        self.upsample_4 = UpSampling2D(size=(2, 2), interpolation="bilinear")
+        self.upsample_5 = UpSampling2D(size=(2, 2), interpolation="bilinear")
+        self.upsample_6 = UpSampling2D(size=(2, 2), interpolation="bilinear")
 
-        self.upsample_out_2 = UpSampling2D(size=(2, 2), interpolation='bilinear')
-        self.upsample_out_3 = UpSampling2D(size=(4, 4), interpolation='bilinear')
-        self.upsample_out_4 = UpSampling2D(size=(8, 8), interpolation='bilinear')
-        self.upsample_out_5 = UpSampling2D(size=(16, 16), interpolation='bilinear')
-        self.upsample_out_6 = UpSampling2D(size=(32, 32), interpolation='bilinear')
+        self.upsample_out_2 = UpSampling2D(size=(2, 2), interpolation="bilinear")
+        self.upsample_out_3 = UpSampling2D(size=(4, 4), interpolation="bilinear")
+        self.upsample_out_4 = UpSampling2D(size=(8, 8), interpolation="bilinear")
+        self.upsample_out_5 = UpSampling2D(size=(16, 16), interpolation="bilinear")
+        self.upsample_out_6 = UpSampling2D(size=(32, 32), interpolation="bilinear")
 
-        self.outconv = Conv2D(out_ch, (1, 1), padding='same')
+        self.outconv = Conv2D(out_ch, (1, 1), padding="same")
 
     def call(self, inputs):
         hx = inputs
@@ -400,10 +437,23 @@ class U2NET(keras.models.Model):
         hx1d = self.stage1d(tf.concat([hx2dup, hx1], axis=3))
         side1 = self.side1(hx1d)
 
-        fused_output = self.outconv(tf.concat([side1, side2, side3, side4, side5, side6], axis=3))
+        fused_output = self.outconv(
+            tf.concat([side1, side2, side3, side4, side5, side6], axis=3)
+        )
 
         sig = keras.activations.sigmoid
-        return tf.stack([sig(fused_output), sig(side1), sig(side2), sig(side3), sig(side4), sig(side5), sig(side6)])
+        return tf.stack(
+            [
+                sig(fused_output),
+                sig(side1),
+                sig(side2),
+                sig(side3),
+                sig(side4),
+                sig(side5),
+                sig(side6),
+            ]
+        )
+
 
 class U2NETP(keras.models.Model):
     def __init__(self, out_ch=1):
@@ -425,34 +475,34 @@ class U2NETP(keras.models.Model):
         self.pool56 = MaxPool2D((2, 2), 2)
 
         self.stage6 = RSU4F(16, 64)
-        self.side6 = Conv2D(out_ch, (3, 3), padding='same')
+        self.side6 = Conv2D(out_ch, (3, 3), padding="same")
 
         self.stage5d = RSU4F(16, 64)
-        self.side5 = Conv2D(out_ch, (3, 3), padding='same')
+        self.side5 = Conv2D(out_ch, (3, 3), padding="same")
 
         self.stage4d = RSU4(16, 64)
-        self.side4 = Conv2D(out_ch, (3, 3), padding='same')
+        self.side4 = Conv2D(out_ch, (3, 3), padding="same")
 
         self.stage3d = RSU5(16, 64)
-        self.side3 = Conv2D(out_ch, (3, 3), padding='same')
+        self.side3 = Conv2D(out_ch, (3, 3), padding="same")
 
         self.stage2d = RSU6(16, 64)
-        self.side2 = Conv2D(out_ch, (3, 3), padding='same')
+        self.side2 = Conv2D(out_ch, (3, 3), padding="same")
 
         self.stage1d = RSU7(16, 64)
-        self.side1 = Conv2D(out_ch, (3, 3), padding='same')
+        self.side1 = Conv2D(out_ch, (3, 3), padding="same")
 
-        self.upsample_2 = UpSampling2D(size=(2, 2), interpolation='bilinear')
-        self.upsample_3 = UpSampling2D(size=(2, 2), interpolation='bilinear')
-        self.upsample_4 = UpSampling2D(size=(2, 2), interpolation='bilinear')
-        self.upsample_5 = UpSampling2D(size=(2, 2), interpolation='bilinear')
-        self.upsample_6 = UpSampling2D(size=(2, 2), interpolation='bilinear')
+        self.upsample_2 = UpSampling2D(size=(2, 2), interpolation="bilinear")
+        self.upsample_3 = UpSampling2D(size=(2, 2), interpolation="bilinear")
+        self.upsample_4 = UpSampling2D(size=(2, 2), interpolation="bilinear")
+        self.upsample_5 = UpSampling2D(size=(2, 2), interpolation="bilinear")
+        self.upsample_6 = UpSampling2D(size=(2, 2), interpolation="bilinear")
 
-        self.upsample_out_2 = UpSampling2D(size=(2, 2), interpolation='bilinear')
-        self.upsample_out_3 = UpSampling2D(size=(4, 4), interpolation='bilinear')
-        self.upsample_out_4 = UpSampling2D(size=(8, 8), interpolation='bilinear')
-        self.upsample_out_5 = UpSampling2D(size=(16, 16), interpolation='bilinear')
-        self.upsample_out_6 = UpSampling2D(size=(32, 32), interpolation='bilinear')
+        self.upsample_out_2 = UpSampling2D(size=(2, 2), interpolation="bilinear")
+        self.upsample_out_3 = UpSampling2D(size=(4, 4), interpolation="bilinear")
+        self.upsample_out_4 = UpSampling2D(size=(8, 8), interpolation="bilinear")
+        self.upsample_out_5 = UpSampling2D(size=(16, 16), interpolation="bilinear")
+        self.upsample_out_6 = UpSampling2D(size=(32, 32), interpolation="bilinear")
 
         self.outconv = Conv2D(out_ch, 1)
 
@@ -496,7 +546,19 @@ class U2NETP(keras.models.Model):
         hx1d = self.stage1d(tf.concat([hx2dup, hx1], axis=3))
         side1 = self.side1(hx1d)
 
-        fused_output = self.outconv(tf.concat([side1, side2, side3, side4, side5, side6], axis=3))
+        fused_output = self.outconv(
+            tf.concat([side1, side2, side3, side4, side5, side6], axis=3)
+        )
 
         sig = keras.activations.sigmoid
-        return tf.stack([sig(fused_output), sig(side1), sig(side2), sig(side3), sig(side4), sig(side5), sig(side6)])
+        return tf.stack(
+            [
+                sig(fused_output),
+                sig(side1),
+                sig(side2),
+                sig(side3),
+                sig(side4),
+                sig(side5),
+                sig(side6),
+            ]
+        )
