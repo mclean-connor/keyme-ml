@@ -1,4 +1,3 @@
-/training-data
 
 # ignore all env files
 *.env
@@ -22,3 +21,6 @@ wandb/*
 
 # ignore all prefect deployment files
 *-deployment.yaml
+
+# ignore all dvc data
+/training-data
