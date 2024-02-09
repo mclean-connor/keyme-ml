@@ -1,7 +1,8 @@
 import pathlib
 from models.base_model import BaseModelConfig
 
-class Config(BaseModelConfig):
+
+class FlatDetectorConfig(BaseModelConfig):
     # Training
     batch_size: int = 8
     epochs: int = 1
@@ -11,13 +12,9 @@ class Config(BaseModelConfig):
     metrics: list = ["accuracy"]
 
     # Dataset
-    dataset_dir: pathlib.Path = pathlib.Path("training_data/bitting_left")
+    dataset_dir: pathlib.Path = pathlib.Path("training-data/bitting_left")
 
     # Model
     default_in_shape: tuple = (224, 224, 3)
     use_third_convolutional_block: bool = False
     y_to_label: dict = {}
-
-
-# Create the configuration
-config = Config()

@@ -4,29 +4,22 @@ import io
 import onnx
 import tf2onnx
 from tensorflow import keras
-import subprocess
-import json
+import os
 from typing import List, Union
 
 
-def list_s3_dvc_files(bucket: str, prefix: str) -> List[str]:
+def get_image_paths(directory: str) -> List[str]:
     """
-    List all files in the DVC repository.
+    Get list of image paths from the specified directory.
     """
-    data_path = prefix.split("/")[-1]
+    # get paths for all images in directory and subdirectories
+    paths = []
+    for root, _, files in os.walk(directory):
+        for file in files:
+            if file.endswith((".png", ".jpg", ".jpeg")):
+                paths.append(os.path.join(root, file))
 
-    dvc_files = []
-    result = subprocess.run(
-        ["dvc", "list", ".", f"training-data/{data_path}", "--dvc-only", "--json"],
-        capture_output=True,
-        text=True,
-    )
-
-    # Parse the JSON output
-    files = json.loads(result.stdout)
-    dvc_files = [f's3://{bucket}/{prefix}{file["path"]}' for file in files]
-
-    return dvc_files
+    return paths
 
 
 def list_s3_objects(bucket: str, prefix: str) -> List[str]:
@@ -37,15 +30,15 @@ def list_s3_objects(bucket: str, prefix: str) -> List[str]:
     paginator = s3_client.get_paginator("list_objects_v2")
     page_iterator = paginator.paginate(Bucket=bucket, Prefix=prefix)
 
-    all_images = []
+    objects = []
     for page in page_iterator:
         if "Contents" in page:
             for obj in page["Contents"]:
                 key = obj["Key"]
                 if key.endswith((".png", ".jpg", ".jpeg")):
-                    all_images.append(f"s3://{bucket}/{key}")
+                    objects.append(f"s3://{bucket}/{key}")
 
-    return all_images
+    return objects
 
 
 def load_image_from_s3(s3_path: str) -> Union[Image.Image, None]:
@@ -77,11 +70,6 @@ def load_image_from_s3(s3_path: str) -> Union[Image.Image, None]:
 def tf2_to_onnx(model: keras.Model, onnx_path: str) -> None:
     # Convert the TensorFlow model to ONNX
     print("Converting the model to ONNX")
-    print("cman", model)
     onnx_model = tf2onnx.convert.from_keras(model)
     # Save the ONNX model
     onnx.save_model(onnx_model, onnx_path)
-
-
-if __name__ == "__main__":
-    print(list_s3_dvc_files("keyme-data", "training-data/bitting_left"))

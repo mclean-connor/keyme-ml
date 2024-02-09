@@ -1,5 +1,4 @@
 [core]
     remote = training-data
-    autostage = true
 ['remote "training-data"']
     url = s3://keyme-data/training-data
