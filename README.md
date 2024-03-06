@@ -6,13 +6,40 @@
 
 This repository contains code for training KeyMe ML models. The app is built around poetry and pyproject for easy install and uses [Modal](https://modal.com/) for remote training, deployment, and CI/CD.
 
+## Training data and versioning
+
+There are two paths for using data version control for training data:
+
+1. If using data already synced within this repository:
+
+   ```bash
+   # create training data directory
+   mkdir training-data
+   # pull the data from dvc
+   dvc pull
+   ```
+
+2. To setup a clean DVC pipeline complete the following:
+
+   ```bash
+   # create training data directory
+   mkdir training-data
+   # initialize dvc and add a remote
+   dvc init -f
+   dvc remote add -d training-data s3://<bucket-name>/path/to/dvcstore
+   # Add data to the trainin-data directory. Do this manually or sync an s3 bucket data with
+   aws s3 sync s3://your-bucket-name/path/to/s3/directory training-data
+   # add the data to dvc
+   dvc add training-data
+   # commit the data change to git
+   git commit -m "Data committed to dvc" # add message
+   # push dvc data
+   dvc push
+   ```
+
 ## Models package
 
 The primary package can be found under the `models` directory. There you can find all models and training methods.
-
-## Data version control
-
-For training locally, data version control can be used... TODO: add instructions
 
 ### Environment setup
 
@@ -37,14 +64,15 @@ If run successfully, skip to step 3 below. For manual setup, begin from step 1.
    ```bash
    poetry install
    ```
-3. A dict of the trainable `model_name`s is listed under `models/__init__.py` as `models`. To train a model locally you can run:
+3. Each model has a config defined under its `__init__.py` file. Make sure training parameters and training data parths are defined and updated.
+4. A dict of the trainable `model_name`s is listed under `models/__init__.py` as `models`. To train a model locally you can run:
    ```bash
    poetry run scripts/train_model.py --model {YOUR_MODEL_NAME}
    ```
 
 ### Training remotly and deploying with Modal
 
-Similar to how we train locally, we can also utilize cloud training resources provided by modal.
+Similar to how we train locally, we can also utilize cloud training resources provided by modal. Before continuing, make sure step 3 above is completed.
 
 1. Configure Modal by running the following command:
    ```bash
