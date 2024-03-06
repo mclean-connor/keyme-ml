@@ -1,25 +1,30 @@
 [tool.poetry]
-name = "keyme-ml"
+name = "models"
 version = "0.1.0"
 description = ""
 authors = ["Connor McLean <c.mclean165@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = ">3.10, <3.11"
+python = ">=3.11, <3.12"
 wandb = "^0.16.2"
 pillow = "^10.2.0"
 boto3 = "^1.34.34"
 scikit-learn = "^1.4.0"
 opencv-python = "^4.9.0"
 python-dotenv = "^1.0.1"
-tensorflow = {version = "2.14", extras = ["and-cuda"]}
 onnx = "^1.15.0"
 tf2onnx = "^1.16.1"
 dvc = "^3.43.1"
-prefect = "^2.82"
 pydantic = "<2.0"
 anyio = "<4.0.0"
 dvc-s3 = "^3.0.1"
+tensorflow = "2.14"
+prefect = "^2.14.21"
+tf2cv = "^0.0.18"
+modal = "^0.61.4"
+tblib = "^3.0.0"
+tensorflow-addons = "^0.23.0"
+
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

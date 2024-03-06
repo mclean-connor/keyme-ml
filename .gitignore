@@ -3,6 +3,13 @@
 *.env
 .env
 
+# ignore weights and biases directories
+wandb/
+artifacts/
+
+# ignore virtual environment
+.venv/
+
 # ignore all log files
 *.log
 log/*.log
