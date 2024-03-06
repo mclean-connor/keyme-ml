@@ -1,10 +1,6 @@
 # initialize the version for docker compose
 version: '3.7'
 
-volumes:
-  # create volume for the weights
-  weights:
-
 services:
   trainer:
     image: keyme-trainer:latest
@@ -14,13 +10,14 @@ services:
     env_file:
       - .env
     volumes:
-      - weights:/usr/src/app/weights
+      - ./training-data:/app/training-data
     deploy:
       resources:
         reservations:
           devices:
-            - driver: nvidia
+            - driver: nvidia # make sure you have installed nvidia-docker2
               count: 1
               capabilities: [gpu]
-    command: ["poetry", "run", "python", "train_model.py", "--model", "BittingHighRes", "--bucket", "keyme-data", "--prefix", "bitting_left"]
+
+    command: ["poetry", "run", "python", "scripts/train_local.py", "--model", "ICNet"]
 

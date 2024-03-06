@@ -1,0 +1,3 @@
+# docker ignore the training-data folder and all its content
+training-data/
+artifacts/
