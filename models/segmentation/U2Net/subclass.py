@@ -1,3 +1,4 @@
+# type: ignore
 import tensorflow as tf
 from tensorflow import keras  # type: ignore
 from tensorflow.keras.layers import Conv2D, BatchNormalization, ReLU, MaxPool2D, UpSampling2D  # type: ignore

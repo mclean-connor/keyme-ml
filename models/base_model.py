@@ -55,8 +55,10 @@ class BaseKeyMeModel:
         self.run_id = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         self.weights_dir = base_weight_dir
         # Set up Weights and Biases
+        self.run = None
         if training:
-            wandb.init(project=name, name=self.run_id)
+            settings = wandb.Settings(job_name=f"job-{name}")
+            self.run = wandb.init(project=name, name=self.run_id, settings=settings)
             # when training, save the weights to wandb
             self.weights_dir = os.path.join(wandb.run.dir, "weights")  # type: ignore
 
@@ -72,9 +74,10 @@ class BaseKeyMeModel:
         if self.use_onnx:
             self._convert_to_onnx()
 
-        wandb.finish()
+        wandb.finish()  # finish the run
+        print("Training complete. Waiting for the run data to upload...")
         while wandb.run is not None:
-            pass
+            pass  # wait for the run data to upload
 
     def _train(self, train_imgs: List[str], eval_imgs: List[str]) -> None:
         """

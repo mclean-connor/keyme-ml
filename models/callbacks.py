@@ -6,7 +6,7 @@ import numpy as np
 import cv2
 
 
-class EvalCallback(WandbEvalCallback):
+class BaseEvalCallback(WandbEvalCallback):
     def __init__(
         self, validation_data, data_table_columns, pred_table_columns, num_samples=5
     ):
@@ -20,6 +20,10 @@ class EvalCallback(WandbEvalCallback):
             batch.append(input)
 
         self.x_batch = np.array(batch)
+
+    def _process_pred(self, pred):
+        # neet to be implemented in subclass, raise if not implamted
+        raise NotImplementedError
 
     def add_ground_truth(self, logs=None):
         # Iterate over the samples in the validation dataset
@@ -35,10 +39,7 @@ class EvalCallback(WandbEvalCallback):
         for idx, pred in enumerate(preds):
             pred = np.asarray(pred)
 
-            # Ensure pred is in the [0, 1] range before scaling
-            pred = np.clip(pred, 0, 1)
-            pred = np.tile(pred, [1, 1, 3])
-            pred = cv2.cvtColor(pred.astype("float32"), cv2.COLOR_BGR2RGB) * 255.0  # type: ignore
+            output = self._process_pred(pred)
 
             # Retrieve the data table reference and its indices
             data_table_ref = self.data_table_ref
@@ -48,11 +49,11 @@ class EvalCallback(WandbEvalCallback):
                 data_table_ref.data[idx][0],  # type: ignore
                 data_table_ref.data[idx][1],  # type: ignore
                 data_table_ref.data[idx][2],  # type: ignore
-                wandb.Image(pred),
+                wandb.Image(output),
             )
 
     def on_train_batch_end(self, batch, logs=None):
-        if batch % 250 == 0:
+        if batch % 500 == 0:
             # Predict the entire batch of images
             preds = self.model.predict(self.x_batch)[0]
 
@@ -61,10 +62,7 @@ class EvalCallback(WandbEvalCallback):
             for idx, pred in enumerate(preds):
                 pred = np.asarray(pred)
 
-                # Ensure pred is in the [0, 1] range before scaling
-                pred = np.clip(pred, 0, 1)
-                pred = np.tile(pred, [1, 1, 3])
-                pred = cv2.cvtColor(pred.astype("float32"), cv2.COLOR_BGR2RGB) * 255.0  # type: ignore
+                output = self._process_pred(pred)
 
                 # Add index text to the image
                 cv2.putText(
@@ -79,7 +77,9 @@ class EvalCallback(WandbEvalCallback):
                 )
 
                 # Concatenate horizontally
-                combined = pred if combined is None else cv2.hconcat([combined, pred])
+                combined = (
+                    output if combined is None else cv2.hconcat([combined, output])
+                )
 
             # Log combined image to wandb
             wandb.log(
@@ -87,14 +87,14 @@ class EvalCallback(WandbEvalCallback):
             )
 
 
-class MetricsCallback(WandbMetricsLogger):
+class BaseMetricsCallback(WandbMetricsLogger):
     def __init__(self):
         super().__init__(
             "epoch",
         )
 
 
-class ModelCheckpoint(WandbModelCheckpoint):
+class BaseModelCheckpoint(WandbModelCheckpoint):
     def __init__(self):
         base_dir = os.path.join(wandb.run.dir, "weights")  # type: ignore
         os.makedirs(base_dir, exist_ok=True)
@@ -109,11 +109,16 @@ class ModelCheckpoint(WandbModelCheckpoint):
         )
 
 
-def get_callbacks(validation_data):
+def get_callbacks(
+    validation_data,
+    eval_callback=BaseEvalCallback,
+    metrics_callback=BaseMetricsCallback,
+    checkpoint_callback=BaseModelCheckpoint,
+):
     return [
-        MetricsCallback(),
-        ModelCheckpoint(),
-        EvalCallback(
+        metrics_callback(),
+        checkpoint_callback(),
+        eval_callback(
             validation_data,
             data_table_columns=["Idx", "Input", "Ground Truth Mask"],
             pred_table_columns=[

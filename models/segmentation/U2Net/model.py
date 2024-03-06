@@ -10,11 +10,12 @@ from typing import Optional
 # project imports
 from models.base_model import BaseKeyMeModel
 from models.segmentation.U2Net.subclass import U2NET, U2NETP, bce_loss, average_iou
-from models.segmentation.U2Net.utils import (
+from models.segmentation.utils import (
     format_input,
     load_training_images,
 )
 from models.segmentation.U2Net import U2NetConfig
+from models.segmentation.U2Net.callback import EvalCallback
 from models.callbacks import get_callbacks
 
 
@@ -48,6 +49,7 @@ class U2Net(BaseKeyMeModel):
             loss=bce_loss,
             metrics=[average_iou],
         )
+        self.model.summary()
 
     def _predict(self, img_path: str) -> np.ndarray:
         image = Image.open(img_path).convert("RGB")  # type: ignore
@@ -102,6 +104,8 @@ class U2Net(BaseKeyMeModel):
         self.model.fit(
             training_data,
             epochs=self.config.epochs,
-            callbacks=get_callbacks(val_data),
+            callbacks=get_callbacks(
+                validation_data=val_data, eval_callback=EvalCallback
+            ),
             validation_data=val_data,
         )
